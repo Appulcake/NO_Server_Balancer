@@ -1,11 +1,13 @@
 ﻿using System;
+using System.Linq;
 using System.Collections.Generic;
+using System.IO;
 using BepInEx;
+using BepInEx.Configuration;
 using BepInEx.Logging;
 using Blueprinter;
 using HarmonyLib;
 using UnityEngine;
-using Logger = UnityEngine.Logger;
 using Object = UnityEngine.Object;
 
 namespace NO_Server_Balancer;
@@ -16,12 +18,21 @@ public class Plugin : BaseUnityPlugin
 {
     public new static ManualLogSource Logger { get; private set; } = null!;
     
+    internal static ConfigFile AircraftPricesConfig { get; private set; } = null!;
+    
     private Harmony? Harmony { get; set; }
     
     private void Awake()
     {
-        // Plugin startup logic
         Logger = base.Logger;
+        
+        AircraftPricesConfig = new ConfigFile(
+            Path.Combine(
+                Paths.ConfigPath,
+                $"{MyPluginInfo.PLUGIN_GUID}.AircraftPrices.cfg"),
+            saveOnInit: true,
+            Info.Metadata);
+        
         Harmony = new Harmony(MyPluginInfo.PLUGIN_GUID);
         Repatch();
     }
@@ -34,7 +45,6 @@ public class Plugin : BaseUnityPlugin
     private void Repatch()
     {
         Harmony?.UnpatchSelf();
-        // Logger.LogInfo("[ServerBalance] Patching Harmony...");
         Harmony?.PatchAll();
     }
 }
@@ -48,101 +58,19 @@ internal static class LASS
     [HarmonyPostfix]
     private static void RegisterAddressableOverridesPostfix(Blueprinter.Plugin __instance)
     {
-        // Plugin.Logger.LogInfo("[ServerBalance] Applying balance changes...");
-        // LogLoadedLasers(__instance);
+        Plugin.Logger.LogInfo("[ServerBalancer] Applying balance changes...");
+        AircraftPriceManager.DiscoverBindAndApply(__instance, Plugin.AircraftPricesConfig);
         ApplyServerBalanceChanges(__instance);
-    }
-    
-    private static void LogLoadedLasers(Blueprinter.Plugin blueprinter)
-    {
-        var seenLasers = new HashSet<int>();
-        var foundCount = 0;
-        
-        foreach (KeyValuePair<string, LoadedBundle> bundleEntry
-                 in blueprinter.bundleRegistry.BundlesByName)
-        {
-            var bundleName = bundleEntry.Key;
-            var loadedBundle = bundleEntry.Value;
-            
-            if (loadedBundle?.AssetBundle == null)
-                continue;
-            
-            var assetBundle = loadedBundle.AssetBundle;
-            string[] assetNames;
-            
-            try
-            {
-                assetNames = assetBundle.GetAllAssetNames();
-            }
-            catch (Exception ex)
-            {
-                //Plugin.Logger.LogError(
-                //    $"[ServerBalance] Could not enumerate bundle " +
-                //    $"\"{bundleName}\": {ex}");
-                
-                continue;
-            }
-            
-            foreach (var assetName in assetNames)
-            {
-                GameObject root;
-                
-                try
-                {
-                    root = assetBundle.LoadAsset<GameObject>(assetName);
-                }
-                catch (Exception ex)
-                {
-                    //Plugin.Logger.LogError(
-                    //    $"[ServerBalance] Could not load GameObject asset " +
-                    //    $"\"{assetName}\" from \"{bundleName}\": {ex}");
-                    
-                    continue;
-                }
-                
-                // Many assets will not be GameObjects.
-                if (!root)
-                    continue;
-                
-                var lasers =
-                    root.GetComponentsInChildren<Laser>(
-                        true);
-                
-                foreach (var laser in lasers)
-                {
-                    if (!laser)
-                        continue;
-                    
-                    // Avoid duplicate output if the same prefab can be reached
-                    // through more than one loaded asset reference.
-                    if (!seenLasers.Add(laser.GetInstanceID()))
-                        continue;
-                    
-                    foundCount++;
-                    
-                    /*
-                    Plugin.Logger.LogInfo(
-                        $"[ServerBalance] Found Laser:" +
-                        $"\n  Bundle: {bundleName}" +
-                        $"\n  Asset: {assetName}" +
-                        $"\n  Root: {root.name}" +
-                        $"\n  Path: {GetTransformPath(laser.transform)}" +
-                        $"\n  fireDamage: {laser.fireDamage}" +
-                        $"\n  blastDamage: {laser.blastDamage}");
-                        */
-                }
-            }
-        }
-        
-        //Plugin.Logger.LogInfo(
-        //    $"[ServerBalance] Found {foundCount} unique Laser components.");
     }
     
     private static void ApplyServerBalanceChanges(
         Blueprinter.Plugin blueprinter)
     {
         var seenLasers = new HashSet<int>();
-        var modifiedCount = 0;
+        // var seenAircrafts = new HashSet<int>();
+        
+        var modifiedLasersCount = 0;
+        // var modifiedAircraftsCount = 0;
         
         foreach (KeyValuePair<string, LoadedBundle> bundleEntry
                  in blueprinter.bundleRegistry.BundlesByName)
@@ -154,6 +82,26 @@ internal static class LASS
                 continue;
             
             var assetBundle = loadedBundle.AssetBundle;
+            
+            // var aircraftDefinitions = assetBundle.LoadAllAssets<AircraftDefinition>();
+            
+            /*
+            foreach (var aircraft in aircraftDefinitions)
+            {
+                var isTernion =
+                    string.Equals(
+                        aircraft.jsonKey,
+                        "P_Trisurface1",
+                        StringComparison.OrdinalIgnoreCase);
+                
+                if (!isTernion)
+                    continue;
+                
+                aircraft.value = Plugin.TernionValue.Value;
+                
+                SavedModifiedAssets.Add(aircraft);
+            }
+            */
             
             foreach (var assetName in assetBundle.GetAllAssetNames())
             {
@@ -184,6 +132,7 @@ internal static class LASS
                         "/truk_laser.prefab",
                         StringComparison.OrdinalIgnoreCase);
                 
+                
                 if (!isTrukLaserPrefab)
                     continue;
                 
@@ -211,7 +160,7 @@ internal static class LASS
                     laser.fireDamage = 45f;
                     // laser.blastDamage = 1f;
                     
-                    float falloffSlope = (0f - 1f) / (50000f - 15000f);
+                    var falloffSlope = (0f - 1f) / (50000f - 15000f);
                     
                     Keyframe[] keys =
                     [
@@ -225,7 +174,7 @@ internal static class LASS
                     SavedModifiedAssets.Add(root);
                     SavedModifiedAssets.Add(laser);
                     
-                    modifiedCount++;
+                    modifiedLasersCount++;
                     
                     /*
                     Plugin.Logger.LogInfo("LASER MUZZLE: {laser.");
@@ -238,7 +187,6 @@ internal static class LASS
                         $"\n  blastDamage: {previousBlastDamage} " +
                         $"-> {laser.blastDamage}");
                         */
-                        
                 }
             }
         }
@@ -268,94 +216,305 @@ internal static class LASS
         
         return string.Join("/", names);
     }
-    
+}
+
+internal static class AircraftPriceManager
+{
+    private const string ConfigSection = "Aircraft Values";
+
     /*
-    [HarmonyPatch(typeof(AimSolver), nameof(AimSolver.GetAimVector))]
-    [HarmonyPrefix]
-    private static bool GetAimVectorPrefix(AimSolver __instance, out float targetRange, ref Vector3 __result)
+     * A single aircraft identifier can potentially have multiple loaded
+     * AircraftDefinition objects. Apply the configured price to all of them.
+     */
+    private static readonly Dictionary<string, List<AircraftDefinition>>
+        DefinitionsById =
+            new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly Dictionary<string, ConfigEntry<float>>
+        ConfigEntriesById =
+            new(StringComparer.OrdinalIgnoreCase);
+
+    private static readonly HashSet<int> SeenInstanceIds = new();
+
+    /*
+     * Retain loaded assets. This may not be strictly necessary for all
+     * definitions, but is consistent with the lifetime issue already found
+     * with Blueprinter assets.
+     */
+    private static readonly List<UnityEngine.Object>
+        SavedModifiedAssets = new();
+
+    private static bool _configReloadHooked;
+
+    internal static void DiscoverBindAndApply(
+        Blueprinter.Plugin blueprinter,
+        ConfigFile config)
     {
-        float rakeFrequency = 0f;
-        float rakeAmount = 0f;
-        
-        GlobalPosition globalPosition = __instance.firingTransform.GlobalPosition();
-        GlobalPosition globalPosition2 = __instance.currentTarget.GlobalPosition();
-        targetRange = FastMath.Distance(globalPosition2, globalPosition);
-        Vector3 vector = ((__instance.currentTarget.speed < 1f) ? Vector3.zero : __instance.currentTarget.rb.velocity);
-        Vector3 vector2 = ((__instance.attachedUnit.speed < 1f) ? Vector3.zero : __instance.attachedUnit.rb.velocity);
-        float num = Vector3.Dot((globalPosition2 - globalPosition).normalized, vector2 - vector);
-        float num2 = targetRange / (__instance.weaponInfo.GetMaxSpeed() * 0.9f + num);
-        if (__instance.correctShots && __instance.observedBullet != null)
+        int newlyDiscovered = 0;
+
+        /*
+         * Search all AircraftDefinitions currently loaded by Unity.
+         *
+         * This should find the base-game definitions once their databases
+         * and assets have finished loading.
+         */
+        AircraftDefinition[] loadedDefinitions =
+            Resources.FindObjectsOfTypeAll<AircraftDefinition>();
+
+        foreach (AircraftDefinition definition in loadedDefinitions)
         {
-            __instance.ObserveBullet();
+            if (RegisterDefinition(definition))
+                newlyDiscovered++;
         }
-        if (__instance.weaponInfo.muzzleVelocity == 0f)
+
+        /*
+         * Explicitly search Blueprinter bundles too. Some bundle assets might
+         * not otherwise be visible through Resources.FindObjectsOfTypeAll.
+         */
+        foreach (KeyValuePair<string, LoadedBundle> bundleEntry
+                 in blueprinter.bundleRegistry.BundlesByName)
         {
-            __result = globalPosition2 + num2 * vector - globalPosition;
-            
-            Plugin.Logger.LogError("No MuzzleVelicity Path");
-            
-            return false;
-        }
-        Vector3 target = (vector - __instance.targetVelPrev) / Time.fixedDeltaTime;
-        __instance.targetVelPrev = vector;
-        vector *= 1f + Mathf.Cos(Time.timeSinceLevelLoad * Mathf.PI * 2f * rakeFrequency) * rakeAmount;
-        __instance.targetAccelSmoothed = Vector3.SmoothDamp(__instance.targetAccelSmoothed, target, ref __instance.targetAccelSmoothingVel, 0.5f);
-        Vector3 vector3 = num2 * vector + 0.5f * num2 * num2 * __instance.targetAccelSmoothed;
-        vector3 -= num2 * vector2;
-        Vector3 vector4 = num2 * num2 * 4.905f * __instance.weaponInfo.gravMult * Vector3.up;
-        Vector3 vector5 = globalPosition2 + vector3 + vector4 - globalPosition;
-        __instance.RunSim(globalPosition, globalPosition2, vector5, vector, num2);
-        __instance.simCorrectionSmoothed = Vector3.SmoothDamp(__instance.simCorrectionSmoothed, __instance.simCorrection, ref __instance.correctionSmoothingVel, 0.15f);
-        __result = vector5 + __instance.simCorrection + __instance.aimCorrection;
-        
-        return false;
-    }
-    
-    [HarmonyPatch(typeof(AimSolver), nameof(AimSolver.RunSim))]
-    [HarmonyPrefix]
-    private static bool RunSimPrefix(AimSolver __instance, GlobalPosition muzzlePosition, GlobalPosition targetPosition,
-        Vector3 simpleLead, Vector3 targetVel, float estimatedTimeToTarget)
-    {
-        float simulationInterval = 0.05f;
-        
-        if (!(Time.timeSinceLevelLoad - __instance.lastSim < simulationInterval))
-        {
-            __instance.lastSim = Time.timeSinceLevelLoad;
-            Vector3 initialVelocity = ((__instance.attachedUnit.speed > 1f) ? __instance.attachedUnit.rb.GetPointVelocity(__instance.firingTransform.position) : Vector3.zero) + simpleLead.normalized * __instance.weaponInfo.muzzleVelocity;
-            __instance.simCorrection = -Kinematics.TrajectorySim(__instance.weaponInfo, initialVelocity, muzzlePosition, targetPosition, targetVel, __instance.targetAccelSmoothed, 0.1f, out var _);
-            if (__instance.simCorrectionSmoothed == Vector3.zero)
+            string bundleName = bundleEntry.Key;
+            LoadedBundle loadedBundle = bundleEntry.Value;
+
+            if (loadedBundle?.AssetBundle == null)
+                continue;
+
+            AircraftDefinition[] bundleDefinitions;
+
+            try
             {
-                __instance.simCorrectionSmoothed = __instance.simCorrection;
+                bundleDefinitions =
+                    loadedBundle.AssetBundle
+                        .LoadAllAssets<AircraftDefinition>() ??
+                    Array.Empty<AircraftDefinition>();
+            }
+            catch (Exception ex)
+            {
+                Plugin.Logger.LogError(
+                    $"[AircraftPrices] Failed loading AircraftDefinitions " +
+                    $"from bundle \"{bundleName}\": {ex}");
+
+                continue;
+            }
+
+            foreach (AircraftDefinition definition in bundleDefinitions)
+            {
+                if (RegisterDefinition(definition))
+                    newlyDiscovered++;
             }
         }
-        
-        return false;
+
+        /*
+         * Create any missing dynamic entries, then apply all configured
+         * values. Ordering is not necessary, but makes the generated config
+         * file and logs more predictable.
+         */
+        foreach (KeyValuePair<string, List<AircraftDefinition>> aircraft
+                 in DefinitionsById.OrderBy(pair => pair.Key))
+        {
+            EnsureConfigEntryAndApply(
+                aircraft.Key,
+                aircraft.Value,
+                config);
+        }
+
+        if (!_configReloadHooked)
+        {
+            config.ConfigReloaded += (_, _) =>
+                ApplyAllConfiguredPrices();
+
+            _configReloadHooked = true;
+        }
+
+        config.Save();
+
+        Plugin.Logger.LogInfo(
+            $"[AircraftPrices] Discovered {newlyDiscovered} new " +
+            $"AircraftDefinition objects; " +
+            $"{DefinitionsById.Count} unique aircraft identifiers.");
     }
-    */
-    
-    
-    /*
-    [HarmonyPatch(typeof(AimSolver), nameof(AimSolver.GetAimVector))]
-    [HarmonyPrefix]
-    private static bool GetAimVectorPrefix(
-        AimSolver __instance,
-        out float targetRange,
-        ref Vector3 __result)
+
+    private static bool RegisterDefinition(
+        AircraftDefinition definition)
     {
-        GlobalPosition muzzlePosition =
-            __instance.firingTransform.GlobalPosition();
-        
-        GlobalPosition targetPosition =
-            __instance.currentTarget.GlobalPosition();
-        
-        targetRange = FastMath.Distance(targetPosition, muzzlePosition);
-        
-        // Direct current line of sight: no lead, gravity, simulation,
-        // acceleration, raking, or learned aim correction.
-        __result = targetPosition - muzzlePosition;
-        
-        return false;
+        if (!definition)
+            return false;
+
+        int instanceId = definition.GetInstanceID();
+
+        if (!SeenInstanceIds.Add(instanceId))
+            return false;
+
+        string aircraftId = GetAircraftId(definition);
+
+        if (string.IsNullOrWhiteSpace(aircraftId))
+        {
+            Plugin.Logger.LogWarning(
+                $"[AircraftPrices] Ignoring AircraftDefinition " +
+                $"\"{definition.name}\" because it has no usable identifier.");
+
+            return false;
+        }
+
+        if (!DefinitionsById.TryGetValue(
+                aircraftId,
+                out List<AircraftDefinition>? definitions))
+        {
+            definitions = new List<AircraftDefinition>();
+            DefinitionsById.Add(aircraftId, definitions);
+        }
+
+        definitions.Add(definition);
+        SavedModifiedAssets.Add(definition);
+
+        return true;
     }
-    
-    */
+
+    private static string GetAircraftId(
+        AircraftDefinition definition)
+    {
+        /*
+         * jsonKey should be the most stable internal identifier.
+         *
+         * Asset name is a reasonable fallback. unitName should preferably
+         * remain a display name rather than the persistent config identity.
+         */
+        if (!string.IsNullOrWhiteSpace(definition.jsonKey))
+            return definition.jsonKey.Trim();
+
+        if (!string.IsNullOrWhiteSpace(definition.name))
+            return definition.name.Trim();
+
+        if (!string.IsNullOrWhiteSpace(definition.unitName))
+            return definition.unitName.Trim();
+
+        return string.Empty;
+    }
+
+    private static void EnsureConfigEntryAndApply(
+        string aircraftId,
+        List<AircraftDefinition> definitions,
+        ConfigFile config)
+    {
+        AircraftDefinition? representative =
+            definitions.FirstOrDefault(definition => definition);
+
+        if (!representative)
+            return;
+
+        if (!ConfigEntriesById.TryGetValue(
+                aircraftId,
+                out ConfigEntry<float>? configEntry))
+        {
+            float loadedDefaultValue = representative.value;
+            string displayName = GetDisplayName(representative);
+
+            bool definitionsDisagree =
+                definitions.Any(definition =>
+                    definition &&
+                    !Mathf.Approximately(
+                        definition.value,
+                        loadedDefaultValue));
+
+            if (definitionsDisagree)
+            {
+                string encounteredValues = string.Join(
+                    ", ",
+                    definitions
+                        .Where(definition => definition)
+                        .Select(definition => definition.value)
+                        .Distinct());
+
+                Plugin.Logger.LogWarning(
+                    $"[AircraftPrices] Multiple definitions for " +
+                    $"\"{aircraftId}\" have different loaded prices: " +
+                    $"{encounteredValues}. Using {loadedDefaultValue} " +
+                    $"as the generated config default.");
+            }
+
+            configEntry = config.Bind(
+                ConfigSection,
+                aircraftId,
+                loadedDefaultValue,
+                new ConfigDescription(
+                    $"{displayName}. " +
+                    $"Internal identifier: {aircraftId}. " +
+                    $"Loaded asset value: {loadedDefaultValue}."));
+
+            ConfigEntriesById.Add(aircraftId, configEntry);
+
+            /*
+             * Capture separate locals so this callback always refers to the
+             * correct aircraft and config entry.
+             */
+            string capturedAircraftId = aircraftId;
+            ConfigEntry<float> capturedEntry = configEntry;
+
+            capturedEntry.SettingChanged += (_, _) =>
+                ApplyPrice(
+                    capturedAircraftId,
+                    capturedEntry.Value);
+        }
+
+        ApplyPrice(aircraftId, configEntry.Value);
+    }
+
+    private static string GetDisplayName(
+        AircraftDefinition definition)
+    {
+        if (!string.IsNullOrWhiteSpace(definition.unitName))
+            return definition.unitName.Trim();
+
+        if (!string.IsNullOrWhiteSpace(definition.name))
+            return definition.name.Trim();
+
+        return "<unnamed aircraft>";
+    }
+
+    private static void ApplyPrice(
+        string aircraftId,
+        float configuredValue)
+    {
+        if (!DefinitionsById.TryGetValue(
+                aircraftId,
+                out List<AircraftDefinition>? definitions))
+        {
+            return;
+        }
+
+        int validDefinitions = 0;
+        int changedDefinitions = 0;
+
+        foreach (AircraftDefinition definition in definitions)
+        {
+            if (!definition)
+                continue;
+
+            validDefinitions++;
+
+            if (!Mathf.Approximately(
+                    definition.value,
+                    configuredValue))
+            {
+                changedDefinitions++;
+            }
+
+            definition.value = configuredValue;
+        }
+
+        Plugin.Logger.LogInfo(
+            $"[AircraftPrices] Applied price {configuredValue} to " +
+            $"\"{aircraftId}\" on {validDefinitions} definition(s); " +
+            $"{changedDefinitions} value(s) changed.");
+    }
+
+    private static void ApplyAllConfiguredPrices()
+    {
+        foreach (KeyValuePair<string, ConfigEntry<float>> entry
+                 in ConfigEntriesById)
+        {
+            ApplyPrice(entry.Key, entry.Value.Value);
+        }
+    }
 }
