@@ -3,7 +3,7 @@
     <PropertyGroup>
         <Game_Path>Y:\Games\steamapps\common\Nuclear Option\NuclearOption_Data\Managed</Game_Path>
         <ModDestination>$(Game_Path)\..\..\BepInEx\plugins</ModDestination>
-        
+
         <TargetFramework>net48</TargetFramework>
         <AssemblyName>Apul.NO_Server_Balancer</AssemblyName>
         <Product>NO_Server_Balancer</Product>
@@ -18,11 +18,11 @@
         <PackageProjectUrl>https://github.com/Appulcake/NO_Server_Balancer</PackageProjectUrl>
         <RepositoryUrl>https://github.com/Appulcake/NO_Server_Balancer</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
-        
+
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <LangVersion>latest</LangVersion>
         <Nullable>enable</Nullable>
-        
+
         <RestoreAdditionalProjectSources>
             https://api.nuget.org/v3/index.json;
             https://nuget.bepinex.dev/v3/index.json;
@@ -47,7 +47,7 @@
         <Reference Include="Blueprinter_1.8.21" HintPath="Y:\Games\steamapps\common\Nuclear Option\BepInEx\plugins\critzOS mod server 7-15 v1\Blueprinter_1.8.21.dll" Private="False" Publicize="True"/>
         <Reference Include="Mirage" HintPath="$(Game_Path)\Mirage.dll" Private="False" Publicize="True"/>
     </ItemGroup>
-    
+
     <ItemGroup Condition="'$(TargetFramework.TrimEnd(`0123456789`))' == 'net'">
         <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.2" PrivateAssets="all"/>
     </ItemGroup>
@@ -61,5 +61,8 @@
         <!-- Copy the build output -->
         <Message Text="Copying build output assemblies from $(OutDir)*.dll to $(ModDestination)\$(AssemblyName)" Importance="high"/>
         <Copy SourceFiles="@(DllFiles)" DestinationFolder="$(ModDestination)\$(AssemblyName)"/>
+
+        <Message Text="Copying build output assemblies from $(OutDir)*.dll to Y:\NOServers\ApulTest1\BepInEx\plugins\$(AssemblyName)" Importance="high"/>
+        <Copy SourceFiles="@(DllFiles)" DestinationFolder="Y:\NOServer\servers\ApulTest1\BepInEx\plugins\$(AssemblyName)"/>
     </Target>
 </Project>
