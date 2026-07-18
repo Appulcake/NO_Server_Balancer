@@ -53,7 +53,7 @@ internal static class LASS
     
     private static void ApplyServerBalanceChanges(Blueprinter.Plugin blueprinter)
     {
-        AnimationCurveExporter.ExportCsv(Path.Combine(Paths.PluginPath, "CurveComparison.csv"), Utils.DamageCurves, 0f,
+        Utils.ExportAnimationCsv(Path.Combine(Paths.PluginPath, "CurveComparison.csv"), Utils.DamageCurves, 0f,
             50000f, 501);
         
         var seenLasers = new HashSet<int>();
