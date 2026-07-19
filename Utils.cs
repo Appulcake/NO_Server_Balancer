@@ -8,7 +8,6 @@ namespace NO_Server_Balancer;
 
 internal static class Utils
 {
-    // ReSharper disable All
     public static readonly Dictionary<string, AnimationCurve> DamageCurves = new()
     {
         ["First_LADS"] = CreateLinearCurve(
@@ -18,8 +17,9 @@ internal static class Utils
         ["New_70kW"] = CreateLinearCurve(
             new Keyframe(0f, 1f),
             new Keyframe(10000f, 1f),
-            new Keyframe(20000f, 0.5f),
-            new Keyframe(25000f, 0f)),
+            new Keyframe(20000f, 0.7f),
+            new Keyframe(25000f, 0.2f),
+            new Keyframe(30000f, 0f)),
         ["New_LADS"] = CreateLinearCurve(
             new Keyframe(0f, 1f),
             new Keyframe(5000f, 0.9f),
@@ -30,9 +30,13 @@ internal static class Utils
             new Keyframe(25000f, 0f)),
         ["Original_Curve"] = new AnimationCurve(
             new Keyframe(0f, 1f, 0.000015f, 0.000015f, 0f, 0.0767408f),
-            new Keyframe(20000f, 0f, -0.0000086f, -0.0000086f, 0.074349314f, 0f))
+            new Keyframe(20000f, 0f, -0.0000086f, -0.0000086f, 0.074349314f, 0f)),
+        ["Second_LADS_Test"] = CreateLinearCurve(
+            new Keyframe(0f, 1f),
+            new Keyframe(15000f, 1f),
+            new Keyframe(35000f, 0.7f),
+            new Keyframe(50000f, 0f)),
     };
-    // ReSharper restore All
     
     private static AnimationCurve CreateLinearCurve(params Keyframe[] keys)
     {

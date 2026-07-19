@@ -87,8 +87,8 @@ internal static class LASS
                 if (!parentVehicle)
                     continue;
                 
-                // Attempt at enabling turrets to track, seems to not work on servers so nvm for now
-                SetTurretTracking.ApplyTracking(parentVehicle, assetName);
+                // Attempt at enabling turrets to track, doesn't quite apply on servers yet
+                // SetTurretTracking.ApplyTracking(parentVehicle, assetName);
                 
                 var isTrukLaserPrefab =
                     string.Equals(parentVehicle.name, "truk_laser", StringComparison.OrdinalIgnoreCase) ||
@@ -179,13 +179,13 @@ internal static class LASS
         
         switch (laserIndex)
         {
-            case 0:
+            case 0: // Initial re-iteration test
             {
-                laser.fireDamage = 45f;
-                laser.damageAtRange = Utils.DamageCurves["First_LADS"];
+                laser.fireDamage = 40f;
+                laser.damageAtRange = Utils.DamageCurves["Second_LADS_Test"];
                 break;
             }
-            case 1:
+            case 1: // Current iteration in use
             {
                 laser.fireDamage = 30f;
                 laser.damageAtRange = Utils.DamageCurves["New_70kW"];
