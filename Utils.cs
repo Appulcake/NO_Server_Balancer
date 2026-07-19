@@ -8,18 +8,31 @@ namespace NO_Server_Balancer;
 
 internal static class Utils
 {
+    // ReSharper disable All
     public static readonly Dictionary<string, AnimationCurve> DamageCurves = new()
     {
-        ["First_LADS"] = CreateLinearCurve(new Keyframe(0f, 1f), new Keyframe(15000f, 1f), new Keyframe(50000f, 0f)),
-        ["New_70kW"] = CreateLinearCurve(new Keyframe(0f, 1f), new Keyframe(5000f, 0.9f), new Keyframe(7500f, 0.8f),
-            new Keyframe(10000f, 0.5f), new Keyframe(12500f, 0.1f), new Keyframe(15000f, 0.05f),
+        ["First_LADS"] = CreateLinearCurve(
+            new Keyframe(0f, 1f),
+            new Keyframe(15000f, 1f),
+            new Keyframe(50000f, 0f)),
+        ["New_70kW"] = CreateLinearCurve(
+            new Keyframe(0f, 1f),
+            new Keyframe(10000f, 1f),
+            new Keyframe(20000f, 0.5f),
             new Keyframe(25000f, 0f)),
-        ["New_LADS"] = CreateLinearCurve(new Keyframe(0f, 1f), new Keyframe(5000f, 0.9f), new Keyframe(7500f, 0.8f),
-            new Keyframe(10000f, 0.5f), new Keyframe(12500f, 0.1f), new Keyframe(15000f, 0.05f),
+        ["New_LADS"] = CreateLinearCurve(
+            new Keyframe(0f, 1f),
+            new Keyframe(5000f, 0.9f),
+            new Keyframe(7500f, 0.8f),
+            new Keyframe(10000f, 0.5f),
+            new Keyframe(12500f, 0.1f),
+            new Keyframe(15000f, 0.05f),
             new Keyframe(25000f, 0f)),
-        ["Original_70kW"] = new AnimationCurve(new Keyframe(0f, 1f, 0.000015f, 0.000015f, 0f, 0.0767408f),
+        ["Original_Curve"] = new AnimationCurve(
+            new Keyframe(0f, 1f, 0.000015f, 0.000015f, 0f, 0.0767408f),
             new Keyframe(20000f, 0f, -0.0000086f, -0.0000086f, 0.074349314f, 0f))
     };
+    // ReSharper restore All
     
     private static AnimationCurve CreateLinearCurve(params Keyframe[] keys)
     {
@@ -89,7 +102,7 @@ internal static class Utils
         return string.Equals(normalizedName, expectedName, StringComparison.OrdinalIgnoreCase);
     }
     
-    public static Laser? FindMountedHighPowerLaser(Transform trukRoot)
+    public static Laser? FindMountedLaser(Transform trukRoot, string turretName)
     {
         var descendants = trukRoot.GetComponentsInChildren<Transform>(true);
         
@@ -98,7 +111,7 @@ internal static class Utils
             if (!descendant)
                 continue;
             
-            if (!HasUnityName(descendant.name, "kar_turret_laserhp")) continue;
+            if (!HasUnityName(descendant.name, turretName)) continue;
             
             var lasers = descendant.GetComponentsInChildren<Laser>(true);
             

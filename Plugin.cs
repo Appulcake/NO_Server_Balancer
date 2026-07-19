@@ -10,6 +10,7 @@ namespace NO_Server_Balancer;
 [BepInDependency("com.nikkorap.blueprinter")]
 public class Plugin : BaseUnityPlugin
 {
+    public const bool IsDebug = true;
     public new static ManualLogSource Logger { get; private set; } = null!;
     
     internal static ConfigFile AircraftPricesConfig { get; private set; } = null!;

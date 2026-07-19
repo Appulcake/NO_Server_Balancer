@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace NO_Server_Balancer;
 
-public class LoggingUtils
+internal static class LoggingUtils
 {
     public static void LogLoadedLasers(Blueprinter.Plugin blueprinter)
     {

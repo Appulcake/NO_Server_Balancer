@@ -16,8 +16,8 @@ namespace NO_Server_Balancer;
 [HarmonyPatch]
 internal static class LASS
 {
-    // ReSharper disable once CollectionNeverQueried.Local
-    private static readonly List<Object> SavedModifiedAssets = new();
+    // ReSharper disable once CollectionNeverQueried.Global
+    public static readonly List<Object> SavedModifiedAssets = new();
     private static readonly HashSet<int> ModifiedLaserInstances = new();
     private static readonly HashSet<int> PendingTrukInstances = new();
     
@@ -25,9 +25,10 @@ internal static class LASS
     [HarmonyPostfix]
     private static void RegisterAddressableOverridesPostfix(Blueprinter.Plugin __instance)
     {
-        Plugin.Logger.LogInfo("[ServerBalancer] Applying balance changes...");
+        Plugin.Logger.LogDebug("[ServerBalancer] Applying balance changes...");
         AircraftPriceManager.DiscoverBindAndApply(__instance, Plugin.AircraftPricesConfig);
-        // LoggingUtils.LogLoadedLasers(__instance);
+        if (Plugin.IsDebug)
+            LoggingUtils.LogLoadedLasers(__instance);
         ApplyServerBalanceChanges(__instance);
     }
     
@@ -53,11 +54,12 @@ internal static class LASS
     
     private static void ApplyServerBalanceChanges(Blueprinter.Plugin blueprinter)
     {
-        Utils.ExportAnimationCsv(Path.Combine(Paths.PluginPath, "CurveComparison.csv"), Utils.DamageCurves, 0f,
-            50000f, 501);
+        // Create .csv to check damage fall-off of curves on a graph
+        if (Plugin.IsDebug)
+            Utils.ExportAnimationCsv(Path.Combine(Paths.PluginPath, "CurveComparison.csv"), Utils.DamageCurves, 0f,
+                50000f, 501);
         
         var seenLasers = new HashSet<int>();
-        var seenTurrets = new HashSet<int>();
         
         foreach (KeyValuePair<string, LoadedBundle> bundleEntry in blueprinter.bundleRegistry.BundlesByName)
         {
@@ -70,33 +72,34 @@ internal static class LASS
             
             foreach (var assetName in assetBundle.GetAllAssetNames())
             {
-                GameObject root;
+                GameObject parentVehicle;
                 
                 try
                 {
-                    root = assetBundle.LoadAsset<GameObject>(assetName);
+                    parentVehicle = assetBundle.LoadAsset<GameObject>(assetName);
                 }
                 catch (Exception ex)
                 {
-                    Plugin.Logger.LogDebug($"[ServerBalancer] Failed to load root asset: {ex.Message}");
+                    Plugin.Logger.LogWarning($"[ServerBalancer] Failed to load root asset: {ex.Message}");
                     continue;
                 }
                 
-                if (!root)
+                if (!parentVehicle)
                     continue;
                 
-                var isTrukLaserPrefab =
-                    string.Equals(root.name, "truk_laser", StringComparison.OrdinalIgnoreCase) ||
-                    assetName.EndsWith("/truk_laser.prefab", StringComparison.OrdinalIgnoreCase);
+                // Attempt at enabling turrets to track, seems to not work on servers so nvm for now
+                SetTurretTracking.ApplyTracking(parentVehicle, assetName);
                 
+                var isTrukLaserPrefab =
+                    string.Equals(parentVehicle.name, "truk_laser", StringComparison.OrdinalIgnoreCase) ||
+                    assetName.EndsWith("/truk_laser.prefab", StringComparison.OrdinalIgnoreCase);
                 
                 if (!isTrukLaserPrefab)
                     continue;
                 
                 Plugin.Logger.LogDebug("[ServerBalancer] Found truk_laser");
                 
-                var lasers = root.GetComponentsInChildren<Laser>(true);
-                var turrets = root.GetComponentsInChildren<Turret>(true);
+                var lasers = parentVehicle.GetComponentsInChildren<Laser>(true);
                 
                 foreach (var laser in lasers)
                 {
@@ -109,45 +112,25 @@ internal static class LASS
                     if (!string.Equals(laser.gameObject.name, "laser_barrel", StringComparison.OrdinalIgnoreCase))
                         continue;
                     
-                    Plugin.Logger.LogDebug("[ServerBalancer] Found laser_barrel");
+                    Plugin.Logger.LogDebug($"[ServerBalancer] Found {parentVehicle.name}'s laser_barrel");
                     
                     laser.fireDamage = 40f;
                     laser.damageAtRange = Utils.DamageCurves["New_LADS"];
-                    laser.info.targetRequirements.maxRange = 25000f;
                     
-                    SavedModifiedAssets.Add(root);
+                    SavedModifiedAssets.Add(parentVehicle);
                     SavedModifiedAssets.Add(laser);
-                }
-                
-                foreach (var turret in turrets)
-                {
-                    if (!turret)
-                        continue;
-                    
-                    if (!seenTurrets.Add(turret.GetInstanceID()))
-                        continue;
-                    
-                    if (!string.Equals(turret.gameObject.name, "laser_turret", StringComparison.OrdinalIgnoreCase))
-                        continue;
-                    
-                    Plugin.Logger.LogInfo("[ServerBalancer] Found laser_turret");
-                    
-                    turret.targetAssessmentInterval = 0.1f;
-                    turret.aimSolver.simulationInterval = 0.1f;
-                    turret.lockTime = 0.01f;
-                    
-                    SavedModifiedAssets.Add(root);
-                    SavedModifiedAssets.Add(turret);
                 }
             }
         }
     }
     
+    // Coroutine to wait (~ 1 or couple frames) for spawned truk to have its component attached
+    // Since on spawn frame it doesn't have its children objects like turrets yet
     private static IEnumerator WaitForTrukLaserAndApply(NetworkIdentity trukIdentity)
     {
         var trukInstanceId = trukIdentity.GetInstanceID();
         
-        // Limit routine to only wait for 600 frames max after spawn-event
+        // Limit routine to only wait for 600 frames max after spawn-event, exit early if found
         const int maximumFrames = 600;
         
         for (var frame = 0; frame < maximumFrames; frame++)
@@ -158,11 +141,20 @@ internal static class LASS
                 yield break;
             }
             
-            var laser = Utils.FindMountedHighPowerLaser(trukIdentity.transform);
+            var laserhp = Utils.FindMountedLaser(trukIdentity.transform, "kar_turret_laserhp");
+            var laser = Utils.FindMountedLaser(trukIdentity.transform, "kar_turret_laser");
             
-            if (laser && laser != null)
+            if (laser != null)
             {
-                ApplyTrukLaserOverride(trukIdentity, laser);
+                ApplyTrukLaserOverride(trukIdentity, laser, 0);
+                
+                PendingTrukInstances.Remove(trukInstanceId);
+                yield break;
+            }
+            
+            if (laserhp != null)
+            {
+                ApplyTrukLaserOverride(trukIdentity, laserhp, 1);
                 
                 PendingTrukInstances.Remove(trukInstanceId);
                 yield break;
@@ -178,15 +170,27 @@ internal static class LASS
     }
     
     // ReSharper disable once UnusedParameter.Local
-    private static void ApplyTrukLaserOverride(NetworkIdentity trukIdentity, Laser laser)
+    private static void ApplyTrukLaserOverride(NetworkIdentity trukIdentity, Laser laser, int laserIndex)
     {
         var laserInstanceId = laser.GetInstanceID();
         
         if (!ModifiedLaserInstances.Add(laserInstanceId))
             return;
         
-        laser.fireDamage = 45f;
-        
-        laser.damageAtRange = Utils.DamageCurves["New_70kW"];
+        switch (laserIndex)
+        {
+            case 0:
+            {
+                laser.fireDamage = 45f;
+                laser.damageAtRange = Utils.DamageCurves["First_LADS"];
+                break;
+            }
+            case 1:
+            {
+                laser.fireDamage = 30f;
+                laser.damageAtRange = Utils.DamageCurves["New_70kW"];
+                break;
+            }
+        }
     }
 }

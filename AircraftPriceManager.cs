@@ -56,7 +56,7 @@ internal static class AircraftPriceManager
             }
             catch (Exception ex)
             {
-                Plugin.Logger.LogError(
+                Plugin.Logger.LogWarning(
                     $"[ServerBalancer] Failed loading AircraftDefinitions from bundle \"{bundleName}\": {ex}");
                 
                 continue;
@@ -79,8 +79,8 @@ internal static class AircraftPriceManager
         
         config.Save();
         
-        Plugin.Logger.LogInfo($"[ServerBalancer] Discovered {newlyDiscovered} new AircraftDefinition objects, " +
-                              $"{DefinitionsById.Count} unique aircraft identifiers");
+        Plugin.Logger.LogDebug($"[ServerBalancer] Discovered {newlyDiscovered} new AircraftDefinition objects, " +
+                               $"{DefinitionsById.Count} unique aircraft identifiers");
     }
     
     private static bool RegisterDefinition(AircraftDefinition definition)
