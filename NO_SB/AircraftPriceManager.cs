@@ -3,11 +3,13 @@ using System.Collections.Generic;
 using System.Linq;
 using BepInEx.Configuration;
 using Blueprinter;
+using HarmonyLib;
 using UnityEngine;
 using Object = object;
 
-namespace NO_Server_Balancer;
+namespace NO_SB;
 
+[HarmonyPatch]
 internal static class AircraftPriceManager
 {
     private const string ConfigSection = "Aircraft Values";
@@ -27,7 +29,16 @@ internal static class AircraftPriceManager
     
     private static bool _configReloadHooked;
     
-    internal static void DiscoverBindAndApply(Blueprinter.Plugin blueprinter, ConfigFile config)
+    [HarmonyPatch(typeof(Blueprinter.Plugin), nameof(Blueprinter.Plugin.RegisterAddressableOverrides))]
+    [HarmonyPostfix]
+    private static void RegisterAddressableOverridesPostfix(Blueprinter.Plugin __instance)
+    {
+        Plugin.Logger.LogDebug("==== Applying Aircraft price changes...");
+        DiscoverBindAndApply(__instance, Plugin.AircraftPricesConfig);
+        Plugin.Logger.LogDebug("==== Aircraft price changes complete.");
+    }
+    
+    private static void DiscoverBindAndApply(Blueprinter.Plugin blueprinter, ConfigFile config)
     {
         var newlyDiscovered = 0;
         
@@ -57,7 +68,7 @@ internal static class AircraftPriceManager
             catch (Exception ex)
             {
                 Plugin.Logger.LogWarning(
-                    $"[ServerBalancer] Failed loading AircraftDefinitions from bundle \"{bundleName}\": {ex}");
+                    $"Failed loading AircraftDefinitions from bundle \"{bundleName}\": {ex}");
                 
                 continue;
             }
@@ -79,7 +90,7 @@ internal static class AircraftPriceManager
         
         config.Save();
         
-        Plugin.Logger.LogDebug($"[ServerBalancer] Discovered {newlyDiscovered} new AircraftDefinition objects, " +
+        Plugin.Logger.LogDebug($"Discovered {newlyDiscovered} new AircraftDefinition objects, " +
                                $"{DefinitionsById.Count} unique aircraft identifiers");
     }
     
@@ -98,7 +109,7 @@ internal static class AircraftPriceManager
         if (string.IsNullOrWhiteSpace(aircraftId))
         {
             Plugin.Logger.LogWarning(
-                $"[ServerBalancer] Ignoring AircraftDefinition \"{definition.name}\" because it has no usable identifier.");
+                $"Ignoring AircraftDefinition \"{definition.name}\" because it has no usable identifier.");
             
             return false;
         }
@@ -161,7 +172,7 @@ internal static class AircraftPriceManager
                         .Distinct());
                 
                 Plugin.Logger.LogWarning(
-                    $"[ServerBalancer] Multiple definitions for \"{aircraftId}\" have different loaded prices: " +
+                    $"Multiple definitions for \"{aircraftId}\" have different loaded prices: " +
                     $"{encounteredValues}. Using {loadedDefaultValue} as the generated config default.");
             }
             
@@ -215,7 +226,7 @@ internal static class AircraftPriceManager
             definition.value = configuredValue;
         }
         
-        Plugin.Logger.LogInfo($"[ServerBalancer] Applied price {configuredValue} to " +
+        Plugin.Logger.LogInfo($"Applied price {configuredValue} to " +
                               $"\"{aircraftId}\" on {validDefinitions} definition(s); " +
                               $"{changedDefinitions} value(s) changed.");
     }

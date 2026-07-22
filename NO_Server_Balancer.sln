@@ -1,6 +1,6 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-Project("{05943C87-1AF8-4A3E-AE7B-45FD25B568C4}") = "NO_Server_Balancer", "NO_Server_Balancer.csproj", "{05943C87-1AF8-4A3E-AE7B-45FD25B568C4}"
+Project("{05943C87-1AF8-4A3E-AE7B-45FD25B568C4}") = "NO_SB", "NO_SB\NO_SB.csproj", "{05943C87-1AF8-4A3E-AE7B-45FD25B568C4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

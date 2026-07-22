@@ -28,7 +28,7 @@
             https://nuget.bepinex.dev/v3/index.json;
             https://nuget.samboy.dev/v3/index.json
         </RestoreAdditionalProjectSources>
-        <RootNamespace>NO_Server_Balancer</RootNamespace>
+        <RootNamespace>NO_SB</RootNamespace>
         <NoWarn>$(NoWarn);CS0436</NoWarn>
     </PropertyGroup>
 
@@ -44,7 +44,7 @@
         <Reference Include="Assembly-CSharp" HintPath="$(Game_Path)\Assembly-CSharp.dll" Private="False" Publicize="True">
             <Aliases>global,NuclearOption</Aliases>
         </Reference>
-        <Reference Include="Blueprinter_1.8.21" HintPath="Y:\Games\steamapps\common\Nuclear Option\BepInEx\plugins\critzOS mod server 7-15 v1\Blueprinter_1.8.21.dll" Private="False" Publicize="True"/>
+        <Reference Include="Blueprinter_1.8.21" HintPath="Y:\Games\steamapps\common\Nuclear Option\BepInEx\plugins\Critz-Modpack 7-20\com.nikkorap.blueprinter\Blueprinter_1.8.21.dll" Private="False" Publicize="True"/>
         <Reference Include="Mirage" HintPath="$(Game_Path)\Mirage.dll" Private="False" Publicize="True"/>
     </ItemGroup>
 
