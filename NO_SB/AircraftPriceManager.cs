@@ -31,6 +31,7 @@ internal static class AircraftPriceManager
     
     [HarmonyPatch(typeof(Blueprinter.Plugin), nameof(Blueprinter.Plugin.RegisterAddressableOverrides))]
     [HarmonyPostfix]
+    // ReSharper disable once InconsistentNaming
     private static void RegisterAddressableOverridesPostfix(Blueprinter.Plugin __instance)
     {
         Plugin.Logger.LogDebug("==== Applying Aircraft price changes...");
