@@ -19,7 +19,7 @@ internal static class HarmonyPatches
     // ReSharper disable once InconsistentNaming
     private static void FactionHQOnMissionLoadPostfix(FactionHQ __instance, Mission? mission)
     {
-        if (!GameManager.IsHeadless || !__instance.IsServer || mission == null)
+        if (!__instance.IsServer || mission == null)
             return;
         
         PrepareMission(mission);
