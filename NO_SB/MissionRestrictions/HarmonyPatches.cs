@@ -66,8 +66,7 @@ internal static class HarmonyPatches
         
         _missionIdentifier = MissionIdentifier.Get(mission);
         
-        var newWeapons = WeaponRestrictions.RefreshConfig();
-        var newAircraft = AircraftRestrictions.RefreshConfig();
+        var (newWeapons, newAircraft) = RefreshRestrictionConfigs();
         
         Plugin.Logger.LogInfo(
             $"Preparing global restrictions for mission " +
@@ -75,6 +74,28 @@ internal static class HarmonyPatches
             $"\"{_missionIdentifier}\". " +
             $"Discovered {newWeapons} new weapon(s) and " +
             $"{newAircraft} new aircraft.");
+    }
+    
+    private static (int newWeapons, int newAircraft) RefreshRestrictionConfigs()
+    {
+        var weaponSaveOnConfigSet = Plugin.WeaponRestrictionsConfig.SaveOnConfigSet;
+        var aircraftSaveOnConfigSet = Plugin.AircraftRestrictionsConfig.SaveOnConfigSet;
+        
+        Plugin.WeaponRestrictionsConfig.SaveOnConfigSet = false;
+        Plugin.AircraftRestrictionsConfig.SaveOnConfigSet = false;
+        
+        try
+        {
+            var newWeapons = WeaponRestrictions.RefreshConfig();
+            var newAircraft = AircraftRestrictions.RefreshConfig();
+            
+            return (newWeapons, newAircraft);
+        }
+        finally
+        {
+            Plugin.WeaponRestrictionsConfig.SaveOnConfigSet = weaponSaveOnConfigSet;
+            Plugin.AircraftRestrictionsConfig.SaveOnConfigSet = aircraftSaveOnConfigSet;
+        }
     }
     
     private static void ReloadOrRecreateConfig(ConfigFile config)
