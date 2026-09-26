@@ -32,7 +32,7 @@ public class Plugin : BaseUnityPlugin
                 true, Info.Metadata);
         
         MarkServerAsAlwaysPvE = Config.Bind("General", "Globally set server to advertise itself as PvE only",
-            true);
+            false);
         
         /*
         AircraftPricesConfig =
