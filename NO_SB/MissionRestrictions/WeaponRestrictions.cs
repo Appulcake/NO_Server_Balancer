@@ -56,12 +56,8 @@ internal static class WeaponRestrictions
     internal static IEnumerable<string> GetRestrictedWeaponNames(string missionIdentifier, string factionName)
     {
         foreach (var weapon in Weapons.Values)
-        {
             if (weapon.Restriction.ShouldRestrict(missionIdentifier, factionName))
-            {
                 yield return weapon.RuntimeRestrictionName;
-            }
-        }
     }
     
     private sealed class WeaponEntry

@@ -16,6 +16,7 @@ public class Plugin : BaseUnityPlugin
     
     internal static ConfigFile WeaponRestrictionsConfig { get; private set; } = null!;
     internal static ConfigFile AircraftRestrictionsConfig { get; private set; } = null!;
+    internal static ConfigEntry<bool> MarkServerAsAlwaysPvE { get; private set; } = null!;
     
     private Harmony? Harmony { get; set; }
     
@@ -29,6 +30,9 @@ public class Plugin : BaseUnityPlugin
         AircraftRestrictionsConfig =
             new ConfigFile(Path.Combine(Paths.ConfigPath, $"{MyPluginInfo.PLUGIN_GUID}.AircraftRestrictions.cfg"),
                 true, Info.Metadata);
+        
+        MarkServerAsAlwaysPvE = Config.Bind("General", "Globally set server to advertise itself as PvE only",
+            true);
         
         /*
         AircraftPricesConfig =
@@ -62,5 +66,8 @@ public class Plugin : BaseUnityPlugin
     {
         Harmony?.UnpatchSelf();
         Harmony?.PatchAll();
+        
+        if (Harmony != null)
+            MissionRestrictions.GWCompatibility.TryPatch(Harmony);
     }
 }

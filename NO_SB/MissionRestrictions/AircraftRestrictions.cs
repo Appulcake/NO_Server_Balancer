@@ -57,12 +57,8 @@ internal static class AircraftRestrictions
     internal static IEnumerable<string> GetRestrictedAircraftIds(string missionIdentifier, string factionName)
     {
         foreach (var aircraft in Aircraft.Values)
-        {
             if (aircraft.Restriction.ShouldRestrict(missionIdentifier, factionName))
-            {
                 yield return aircraft.RestrictionId;
-            }
-        }
     }
     
     private sealed class AircraftEntry

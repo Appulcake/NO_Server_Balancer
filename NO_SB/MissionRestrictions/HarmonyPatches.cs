@@ -32,16 +32,12 @@ internal static class HarmonyPatches
         var aircraftAddedByPlugin = 0;
         
         foreach (var weaponName in WeaponRestrictions.GetRestrictedWeaponNames(_missionIdentifier, factionName))
-        {
             if (weaponRestrictions.Add(weaponName))
                 weaponsAddedByPlugin++;
-        }
         
         foreach (var aircraftId in AircraftRestrictions.GetRestrictedAircraftIds(_missionIdentifier, factionName))
-        {
             if (aircraftRestrictions.Add(aircraftId))
                 aircraftAddedByPlugin++;
-        }
         
         __instance.NetworkrestrictedWeapons = weaponRestrictions.ToList();
         __instance.NetworkrestrictedAircraft = aircraftRestrictions.ToList();
