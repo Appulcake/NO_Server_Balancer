@@ -1,4 +1,5 @@
 using HarmonyLib;
+
 // ReSharper disable InconsistentNaming
 
 namespace NO_SB.MissionRestrictions;
@@ -17,16 +18,14 @@ internal static class GWCompatibility
         var prefix = AccessTools.Method(typeof(GWCompatibility), nameof(CheckAndApplyBalancePrefix));
         if (target == null || prefix == null)
         {
-            Plugin.Logger.LogWarning("GW plugin found, but MissionBalanceService.CheckAndApplyBalance could not be patched.");
+            Plugin.Logger.LogWarning(
+                "GW plugin found, but MissionBalanceService.CheckAndApplyBalance could not be patched.");
             return;
         }
         
-        harmony.Patch(target, prefix: new HarmonyMethod(prefix));
+        harmony.Patch(target, new HarmonyMethod(prefix));
         Plugin.Logger.LogInfo("GW mission balance compatibility enabled.");
     }
     
-    private static bool CheckAndApplyBalancePrefix()
-    {
-        return !PlayerFactionOverrides.HasActiveOverrideForCurrentMission;
-    }
+    private static bool CheckAndApplyBalancePrefix() => !PlayerFactionOverrides.HasActiveOverrideForCurrentMission;
 }

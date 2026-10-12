@@ -3,6 +3,8 @@ using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
 using HarmonyLib;
+using NO_SB.MissionRestrictions;
+using NO_SB.Production;
 
 namespace NO_SB;
 
@@ -34,6 +36,9 @@ public class Plugin : BaseUnityPlugin
         MarkServerAsAlwaysPvE = Config.Bind("General", "Globally set server to advertise itself as PvE only",
             false);
         
+        EnemyAircraftProduction.Initialise(Config);
+        StartCoroutine(EnemyAircraftProduction.Monitor());
+        
         /*
         AircraftPricesConfig =
             new ConfigFile(Path.Combine(Paths.ConfigPath, $"{MyPluginInfo.PLUGIN_GUID}.AircraftPrices.cfg"), true,
@@ -58,7 +63,7 @@ public class Plugin : BaseUnityPlugin
     private void OnDestroy()
     {
         Harmony?.UnpatchSelf();
-        
+        EnemyAircraftProduction.Clear();
         // LimitDeployment.ClearAllCounts("Plugin unloaded");
     }
     
@@ -68,6 +73,6 @@ public class Plugin : BaseUnityPlugin
         Harmony?.PatchAll();
         
         if (Harmony != null)
-            MissionRestrictions.GWCompatibility.TryPatch(Harmony);
+            GWCompatibility.TryPatch(Harmony);
     }
 }

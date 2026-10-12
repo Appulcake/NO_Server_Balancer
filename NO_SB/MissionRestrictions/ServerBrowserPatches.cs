@@ -7,7 +7,7 @@ namespace NO_SB.MissionRestrictions;
 [HarmonyPatch]
 internal static class ServerBrowserPatches
 {
-    [HarmonyPatch(typeof(MissionTag), nameof(MissionTag.GetPvpTypeLobbyString), [typeof(Mission)])]
+    [HarmonyPatch(typeof(MissionTag), nameof(MissionTag.GetPvpTypeLobbyString), typeof(Mission))]
     [HarmonyPostfix]
     // ReSharper disable once InconsistentNaming
     private static void ForceDedicatedServerPvE(ref string __result)

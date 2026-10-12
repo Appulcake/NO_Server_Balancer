@@ -15,7 +15,8 @@ internal static class PlayerFactionOverrides
         get
         {
             var currentMission = MissionManager.CurrentMission;
-            return currentMission != null && ReferenceEquals(_preparedMission, currentMission) && _resolvedMode.HasValue;
+            return currentMission != null && ReferenceEquals(_preparedMission, currentMission) &&
+                   _resolvedMode.HasValue;
         }
     }
     
